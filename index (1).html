@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bench Boss · Round 14</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1a3a6e;
+    --navy-dark: #0f2a54;
+    --navy-light: #e6f1fb;
+    --gold: #c9973a;
+    --green: #27500a;
+    --green-light: #eaf3de;
+    --red: #791f1f;
+    --red-light: #fcebeb;
+    --border: #e2e0d8;
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --text: #1a1a18;
+    --muted: #6b6960;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--navy);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
+  .header p  { font-size: 12px; color: #b0c4e8; margin-top: 1px; }
+  .ball { font-size: 28px; }
+
+  /* ── Nav tabs ── */
+  .nav {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .nav button {
+    flex: 1;
+    min-width: 90px;
+    padding: 12px 8px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  .nav button.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+  /* ── Layout ── */
+  .page { display: none; max-width: 720px; margin: 0 auto; padding: 1rem; }
+  .page.active { display: block; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+
+  /* ── Manager grid ── */
+  .mgr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 480px) { .mgr-grid { grid-template-columns: repeat(2, 1fr); } }
+  .mgr-btn {
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text);
+    transition: all 0.15s;
+    line-height: 1.3;
+  }
+  .mgr-btn:hover { background: var(--navy-light); border-color: var(--navy); }
+  .mgr-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .mgr-btn .saved-tag { font-size: 10px; opacity: 0.75; display: block; margin-top: 2px; }
+
+  /* ── Slot grid ── */
+  .slot-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 480px) { .slot-grid { grid-template-columns: repeat(2, 1fr); } }
+  .slot {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 6px;
+    min-height: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .slot:hover { border-color: var(--navy); }
+  .slot.active-slot { border-color: #378add; border-style: solid; background: var(--navy-light); }
+  .slot.filled { border-style: solid; border-color: var(--border); background: var(--bg); }
+  .slot .slot-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .slot .slot-name { font-size: 11px; font-weight: 600; line-height: 1.3; }
+  .slot .slot-team { font-size: 10px; color: var(--muted); }
+  .slot .rm { position: absolute; top: 3px; right: 5px; font-size: 13px; color: var(--muted); cursor: pointer; line-height: 1; }
+  .slot .rm:hover { color: var(--red); }
+
+  /* ── Position badges ── */
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 3px;
+  }
+  .b-HOK { background: #eeedfe; color: #3c3489; }
+  .b-PR  { background: #fac775; color: #633806; }
+  .b-LF  { background: #c0dd97; color: #27500a; }
+  .b-HB  { background: #b5d4f4; color: #0c447c; }
+  .b-UB  { background: #f4c0d1; color: #72243e; }
+
+  /* ── Progress bar ── */
+  .prog { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 14px; overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--navy); border-radius: 2px; transition: width 0.3s; }
+
+  /* ── Filters ── */
+  .filters { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+  .filters select {
+    font-size: 13px; padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .hint-pill {
+    font-size: 12px; font-weight: 500;
+    padding: 4px 10px;
+    background: var(--navy-light);
+    color: var(--navy);
+    border-radius: 20px;
+  }
+
+  /* ── Player list ── */
+  .player-list {
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 320px; overflow-y: auto; padding-right: 2px;
+  }
+  .player-list::-webkit-scrollbar { width: 4px; }
+  .player-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .player-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .player-row:hover { background: var(--bg); }
+  .player-row.selected { background: var(--navy-light); border-color: #378add; }
+  .player-row.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+  .player-name { flex: 1; font-size: 13px; font-weight: 500; }
+  .player-team { font-size: 12px; color: var(--muted); }
+  .prop-x2 { font-size: 10px; padding: 1px 5px; background: #fac775; color: #633806; border-radius: 4px; margin-left: 4px; }
+  .check { color: #378add; font-size: 16px; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 8px 18px;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--navy-dark); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-outline {
+    padding: 8px 14px;
+    background: none;
+    color: var(--navy);
+    border: 1px solid var(--navy);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-outline:hover { background: var(--navy-light); }
+
+  /* ── Status bar ── */
+  .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+  .status-row span { font-size: 13px; color: var(--muted); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { background: #1a3a6e; color: #fff; }
+  .toast.error   { background: var(--red); color: #fff; }
+
+  /* ── Leaderboard ── */
+  .lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .lb-table th { text-align: left; padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .lb-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+  .lb-table tr:last-child td { border-bottom: none; }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    font-size: 12px; font-weight: 600;
+  }
+  .r1 { background: #c9973a; color: #fff; }
+  .r2 { background: #9e9e9e; color: #fff; }
+  .r3 { background: #a0522d; color: #fff; }
+  .rn { background: var(--border); color: var(--muted); }
+  .lb-name { font-weight: 600; font-size: 14px; }
+  .lb-pts  { font-weight: 700; font-size: 16px; color: var(--navy); }
+  .lb-sub  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .last-updated { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+  /* ── My team view (leaderboard drill-down) ── */
+  .team-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .team-chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 8px; border: 1px solid var(--border);
+    border-radius: 20px; font-size: 12px; background: var(--bg);
+  }
+
+  /* ── Admin / upload ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--navy); background: var(--navy-light); }
+  .upload-zone p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .upload-zone .icon { font-size: 32px; }
+  .admin-unlock { display: flex; gap: 8px; margin-bottom: 12px; }
+  .admin-unlock input {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 13px; background: var(--surface);
+    color: var(--text);
+  }
+  .score-preview { margin-top: 12px; }
+  .score-preview table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .score-preview th { text-align: left; padding: 6px 8px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .score-preview td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .score-preview tr:last-child td { border-bottom: none; }
+  .info-box {
+    background: var(--navy-light);
+    border-left: 3px solid var(--navy);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
+
+  /* ── Loading spinner ── */
+  .spinner {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2px solid var(--border); border-top-color: var(--navy);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-overlay {
+    text-align: center; padding: 2rem;
+    color: var(--muted); font-size: 14px;
+  }
+
+  /* ── Responsive tweaks ── */
+  @media (max-width: 480px) {
+    .header h1 { font-size: 17px; }
+    .card { padding: 0.875rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="ball">🏉</span>
+  <div>
+    <h1>Bench Boss</h1>
+    <p>Super Rugby Pacific · Round 14 · Bench players only</p>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="active" onclick="showPage('draft',this)">Draft</button>
+  <button onclick="showPage('leaderboard',this)">Leaderboard</button>
+  <button onclick="showPage('admin',this)">Scores ⚙️</button>
+</nav>
+
+<!-- ═══════════════════ DRAFT PAGE ═══════════════════ -->
+<div id="page-draft" class="page active">
+
+  <div class="card">
+    <h2>Select your manager</h2>
+    <div class="mgr-grid" id="mgr-grid"></div>
+  </div>
+
+  <div id="draft-panel" style="display:none">
+    <div class="card">
+      <div class="status-row">
+        <span id="draft-status">Pick one player per slot · max 2 per team</span>
+        <button class="btn" onclick="saveTeam()" id="save-btn">Save team</button>
+      </div>
+      <div class="prog"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="slot-grid" id="slot-grid"></div>
+      <div class="filters">
+        <select id="filter-team" onchange="renderPlayers()">
+          <option value="">All teams</option>
+          <option>Chiefs</option><option>Highlanders</option>
+          <option>Drua</option><option>Waratahs</option>
+          <option>Blues</option><option>Hurricanes</option>
+          <option>Force</option><option>Reds</option>
+        </select>
+        <span class="hint-pill" id="filter-hint">Select a slot to pick</span>
+      </div>
+      <div class="player-list" id="player-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ LEADERBOARD PAGE ═══════════════════ -->
+<div id="page-leaderboard" class="page">
+  <div class="card">
+    <h2>Leaderboard</h2>
+    <div id="lb-last-updated" class="last-updated"></div>
+    <div id="lb-content"><div class="loading-overlay"><span class="spinner"></span>Loading…</div></div>
+  </div>
+  <div class="card" id="teams-card" style="display:none">
+    <h2 id="teams-card-title">Teams</h2>
+    <div id="teams-content"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ADMIN / SCORES PAGE ═══════════════════ -->
+<div id="page-admin" class="page">
+  <div class="card">
+    <h2>Upload scores</h2>
+    <div class="info-box">
+      Enter your admin key, then upload a filled-in CSV. Download the template to get started — just fill in the <strong>points</strong> column.
+    </div>
+    <div class="admin-unlock">
+      <input type="password" id="admin-key-input" placeholder="Admin key…" />
+      <a class="btn-outline" id="dl-template" href="#" onclick="downloadTemplate(event)">⬇ Template</a>
+    </div>
+    <div
+      class="upload-zone"
+      id="upload-zone"
+      onclick="document.getElementById('csv-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)"
+    >
+      <div class="icon">📄</div>
+      <strong>Click to upload CSV</strong>
+      <p>or drag and drop · bench-boss-round14.csv</p>
+    </div>
+    <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleFileSelect(event)">
+    <div id="upload-preview"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Config ────────────────────────────────────────────────────────────────
+// Change this to your Railway URL after deploying
+const API = 'https://YOUR-RAILWAY-URL.railway.app';
+
+// ─── Data ──────────────────────────────────────────────────────────────────
+const SLOT_DEFS = [
+  { slot: 'HOK',  pos: 'HOK', label: 'Hooker'         },
+  { slot: 'PR1',  pos: 'PR',  label: 'Prop 1'          },
+  { slot: 'PR2',  pos: 'PR',  label: 'Prop 2'          },
+  { slot: 'LF1',  pos: 'LF',  label: 'Lock / Flanker 1' },
+  { slot: 'LF2',  pos: 'LF',  label: 'Lock / Flanker 2' },
+  { slot: 'HB',   pos: 'HB',  label: 'Halfback'        },
+  { slot: 'UB1',  pos: 'UB',  label: 'Utility Back 1'  },
+  { slot: 'UB2',  pos: 'UB',  label: 'Utility Back 2'  }
+];
+
+// Populated from API
+let PLAYERS   = [];
+let MANAGERS  = [];
+let allTeams  = {};
+let scoreMap  = {};
+let leaderboard = [];
+let lastUpdated = null;
+
+// Draft state
+let activeMgr  = null;
+let activeSlot = null;
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const data = await apiFetch('/api/state');
+    PLAYERS    = data.players;
+    MANAGERS   = data.managers;
+    allTeams   = data.teams;
+    scoreMap   = data.scoreMap;
+    leaderboard = data.leaderboard;
+    lastUpdated = data.lastUpdated;
+    renderMgrGrid();
+    renderLeaderboard();
+  } catch (e) {
+    toast('Could not reach server. Check API URL in the HTML.', 'error');
+  }
+}
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+}
+
+// ─── Nav ───────────────────────────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'leaderboard') renderLeaderboard();
+}
+
+// ─── Draft ─────────────────────────────────────────────────────────────────
+function renderMgrGrid() {
+  const el = document.getElementById('mgr-grid');
+  el.innerHTML = MANAGERS.map(m => {
+    const hasSaved = allTeams[m.id] && Object.keys(allTeams[m.id]).length > 0;
+    return `<button class="mgr-btn ${activeMgr === m.id ? 'active' : ''}"
+      onclick="selectMgr('${m.id}')">
+      ${m.name}
+      ${hasSaved ? '<span class="saved-tag">✓ team saved</span>' : ''}
+    </button>`;
+  }).join('');
+}
+
+function selectMgr(id) {
+  activeMgr  = id;
+  activeSlot = null;
+  renderMgrGrid();
+  document.getElementById('draft-panel').style.display = 'block';
+  renderSlots();
+  renderPlayers();
+}
+
+function getPicks() { return allTeams[activeMgr] || {}; }
+
+function setActiveSlot(slot) {
+  activeSlot = activeSlot === slot ? null : slot;
+  renderSlots();
+  renderPlayers();
+}
+
+function renderSlots() {
+  const picks = getPicks();
+  const filled = Object.values(picks).filter(Boolean).length;
+  document.getElementById('prog-fill').style.width = (filled / 8 * 100) + '%';
+  document.getElementById('draft-status').textContent =
+    `${filled}/8 filled · max 2 per team · props score ×2`;
+
+  const el = document.getElementById('slot-grid');
+  el.innerHTML = SLOT_DEFS.map(s => {
+    const pid = picks[s.slot];
+    const p   = pid ? PLAYERS.find(x => x.id === pid) : null;
+    const isA = activeSlot === s.slot;
+    if (p) {
+      return `<div class="slot filled ${isA ? 'active-slot' : ''}" onclick="setActiveSlot('${s.slot}')">
+        <span class="rm" onclick="event.stopPropagation();removeSlot('${s.slot}')">×</span>
+        <span class="badge b-${s.pos}">${s.pos}${s.pos === 'PR' ? ' ×2' : ''}</span>
+        <span class="slot-name">${lastName(p.name)}</span>
+        <span class="slot-team">${p.team}</span>
+      </div>`;
+    }
+    return `<div class="slot ${isA ? 'active-slot' : ''}" onclick="setActiveSlot('${s.slot}')">
+      <span class="slot-label">${s.label}</span>
+      <span class="badge b-${s.pos}">${s.pos}${s.pos === 'PR' ? ' ×2' : ''}</span>
+    </div>`;
+  }).join('');
+
+  // hint
+  const hint = document.getElementById('filter-hint');
+  if (activeSlot) {
+    const def = SLOT_DEFS.find(s => s.slot === activeSlot);
+    hint.textContent = `Picking: ${def.label}`;
+  } else {
+    hint.textContent = 'Tap a slot to pick';
+  }
+}
+
+function removeSlot(slot) {
+  if (!activeMgr) return;
+  if (!allTeams[activeMgr]) allTeams[activeMgr] = {};
+  delete allTeams[activeMgr][slot];
+  activeSlot = null;
+  renderSlots();
+  renderPlayers();
+}
+
+function renderPlayers() {
+  const picks   = getPicks();
+  const pickedIds = Object.values(picks).filter(Boolean);
+  const teamFilter = document.getElementById('filter-team').value;
+
+  // count teams used
+  const teamCount = {};
+  pickedIds.forEach(id => {
+    const p = PLAYERS.find(x => x.id === id);
+    if (p) teamCount[p.team] = (teamCount[p.team] || 0) + 1;
+  });
+
+  // only show players that match current slot's position
+  const slotDef = activeSlot ? SLOT_DEFS.find(s => s.slot === activeSlot) : null;
+
+  const filtered = PLAYERS.filter(p => {
+    if (teamFilter && p.team !== teamFilter) return false;
+    if (slotDef && p.pos !== slotDef.pos) return false;
+    return true;
+  });
+
+  const el = document.getElementById('player-list');
+  if (!activeSlot) {
+    el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">
+      Tap a slot above to start picking
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(p => {
+    const sel      = pickedIds.includes(p.id);
+    const teamFull = !sel && (teamCount[p.team] || 0) >= 2;
+    const dis      = teamFull;
+    return `<div class="player-row ${sel ? 'selected' : ''} ${dis ? 'disabled' : ''}"
+      onclick="${dis ? '' : `pickPlayer('${p.id}')`}">
+      <span class="badge b-${p.pos}">${p.pos}</span>
+      <span class="player-name">${p.name}${p.pos === 'PR' ? '<span class="prop-x2">×2</span>' : ''}</span>
+      <span class="player-team">${p.team}${teamFull ? ' (full)' : ''}</span>
+      ${sel ? '<span class="check">✓</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function pickPlayer(pid) {
+  if (!activeMgr || !activeSlot) return;
+  if (!allTeams[activeMgr]) allTeams[activeMgr] = {};
+
+  const picks   = allTeams[activeMgr];
+  const current = picks[activeSlot];
+  const p       = PLAYERS.find(x => x.id === pid);
+
+  // check 2-per-team rule (excluding current slot's existing pick)
+  const pickedIds = Object.entries(picks)
+    .filter(([slot]) => slot !== activeSlot)
+    .map(([, id]) => id)
+    .filter(Boolean);
+  const teamCount = pickedIds.filter(id => PLAYERS.find(x => x.id === id)?.team === p.team).length;
+  if (teamCount >= 2) { toast(`Max 2 players from ${p.team}`, 'error'); return; }
+
+  // toggle off if already in this slot
+  if (current === pid) {
+    delete picks[activeSlot];
+  } else {
+    picks[activeSlot] = pid;
+    // advance to next empty slot
+    const next = SLOT_DEFS.find(s => !picks[s.slot] && s.slot !== activeSlot);
+    activeSlot = next ? next.slot : null;
+  }
+
+  renderSlots();
+  renderPlayers();
+}
+
+async function saveTeam() {
+  const picks = getPicks();
+  const filled = Object.values(picks).filter(Boolean).length;
+  if (filled < 8) {
+    toast(`Fill all 8 slots before saving (${filled}/8 done)`, 'error');
+    return;
+  }
+  try {
+    document.getElementById('save-btn').disabled = true;
+    await apiFetch('/api/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ managerId: activeMgr, picks })
+    });
+    const mgr = MANAGERS.find(m => m.id === activeMgr);
+    toast(`${mgr.name}'s team saved! 🏉`, 'success');
+    renderMgrGrid();
+  } catch (e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    document.getElementById('save-btn').disabled = false;
+  }
+}
+
+// ─── Leaderboard ───────────────────────────────────────────────────────────
+function renderLeaderboard() {
+  const el = document.getElementById('lb-content');
+
+  if (!leaderboard.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">No data yet.</div>';
+    return;
+  }
+
+  const lastEl = document.getElementById('lb-last-updated');
+  lastEl.textContent = lastUpdated
+    ? `Scores last updated: ${new Date(lastUpdated).toLocaleString('en-NZ', { dateStyle: 'medium', timeStyle: 'short' })}`
+    : 'Scores not yet uploaded';
+
+  el.innerHTML = `<table class="lb-table">
+    <thead><tr><th>#</th><th>Manager</th><th>Points</th><th></th></tr></thead>
+    <tbody>
+    ${leaderboard.map((m, i) => {
+      const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : 'rn';
+      const pickedCount = Object.values(m.picks).filter(Boolean).length;
+      return `<tr>
+        <td><span class="rank-badge ${rc}">${i + 1}</span></td>
+        <td>
+          <div class="lb-name">${m.name}</div>
+          <div class="lb-sub">${pickedCount}/8 players drafted</div>
+        </td>
+        <td><span class="lb-pts">${Math.round(m.total)}</span></td>
+        <td><button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="showTeam('${m.id}')">Team</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function showTeam(mgrId) {
+  const mgr   = MANAGERS.find(m => m.id === mgrId);
+  const picks = allTeams[mgrId] || {};
+  const card  = document.getElementById('teams-card');
+  const title = document.getElementById('teams-card-title');
+  const cont  = document.getElementById('teams-content');
+
+  title.textContent = `${mgr.name}'s team`;
+  const chips = SLOT_DEFS.map(s => {
+    const pid = picks[s.slot];
+    const p   = pid ? PLAYERS.find(x => x.id === pid) : null;
+    const pts = p ? parseFloat(scoreMap[p.id] || 0) : 0;
+    const finalPts = p?.pos === 'PR' ? pts * 2 : pts;
+    return `<div class="team-chip">
+      <span class="badge b-${s.pos}" style="margin:0">${s.pos}</span>
+      <span style="font-size:12px;font-weight:500">${p ? p.name : '—'}</span>
+      ${p ? `<span style="font-size:11px;color:var(--muted)">${p.team}</span>` : ''}
+      ${p ? `<span style="font-size:12px;font-weight:600;color:var(--navy)">${Math.round(finalPts)} pts</span>` : ''}
+    </div>`;
+  }).join('');
+
+  cont.innerHTML = `<div class="team-chips">${chips}</div>`;
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── Admin / upload ────────────────────────────────────────────────────────
+async function downloadTemplate(e) {
+  e.preventDefault();
+  const key = document.getElementById('admin-key-input').value.trim();
+  window.open(API + '/api/template.csv', '_blank');
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+let pendingCsvText = null;
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingCsvText = ev.target.result;
+    previewCsv(pendingCsvText);
+  };
+  reader.readAsText(file);
+}
+
+function previewCsv(csv) {
+  const lines = csv.trim().split('\n').slice(1).filter(l => l.trim());
+  const preview = lines.slice(0, 10).map(line => {
+    const cols = line.split(',');
+    const name = cols[1]?.replace(/"/g, '').trim();
+    const pts  = parseFloat(cols[4]) || 0;
+    return `<tr><td>${name}</td><td style="text-align:right;font-weight:600">${pts}</td></tr>`;
+  }).join('');
+
+  document.getElementById('upload-preview').innerHTML = `
+    <div class="score-preview">
+      <table>
+        <thead><tr><th>Player</th><th style="text-align:right">Points</th></tr></thead>
+        <tbody>${preview}</tbody>
+      </table>
+      ${lines.length > 10 ? `<p style="font-size:12px;color:var(--muted);margin-top:6px">…and ${lines.length - 10} more</p>` : ''}
+      <div style="margin-top:12px">
+        <button class="btn" onclick="uploadScores()">Upload & update scores</button>
+      </div>
+    </div>`;
+}
+
+async function uploadScores() {
+  const key = document.getElementById('admin-key-input').value.trim();
+  if (!key) { toast('Enter your admin key first', 'error'); return; }
+  if (!pendingCsvText) { toast('No file loaded', 'error'); return; }
+
+  const blob = new Blob([pendingCsvText], { type: 'text/csv' });
+  const fd   = new FormData();
+  fd.append('file', blob, 'scores.csv');
+
+  try {
+    const data = await apiFetch('/api/scores', {
+      method: 'POST',
+      headers: { 'x-admin-key': key },
+      body: fd
+    });
+
+    // refresh state
+    const fresh  = await apiFetch('/api/state');
+    scoreMap     = fresh.scoreMap;
+    leaderboard  = fresh.leaderboard;
+    lastUpdated  = fresh.lastUpdated;
+    allTeams     = fresh.teams;
+
+    toast(`Scores updated for ${data.updated} players 🏉`, 'success');
+    document.getElementById('upload-preview').innerHTML = '';
+    pendingCsvText = null;
+    document.getElementById('csv-input').value = '';
+  } catch (e) {
+    toast('Upload failed: ' + e.message, 'error');
+  }
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+function lastName(name) {
+  const parts = name.split(' ');
+  return parts.length > 1 ? parts[parts.length - 1] : name;
+}
+
+let toastTimer;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ─── Go ────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
